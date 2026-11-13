@@ -17,8 +17,9 @@ The source is the verified 200 x 200 x 80 mm rear-open chassis
 * leaves the whole electronics bay open from the floor (z = 5) up to the
   new perfboard roof, so the two motor drivers and the wiring stay
   accessible from above;
-* keeps the side roof seats/pilots; exports a separate flat upper platform
-  that screws onto those seats (M3 self-tapping screws into the pilots);
+* keeps the side roof seats/pilots; exports a separate upper platform
+  with four press-fit rods that drop into those pilots (no screws), a
+  shallow battery tray on top and wire pass-through cuts;
 * adds a perfboard frame at z = 40 mm, flush with the side-window sills:
   the 190 x 62.5 mm board takes the old roof opening, carries the two
   HC-SR04 side sensors (they stand on it, eyes at z = 50) and the ESP32;
@@ -30,11 +31,11 @@ The source is the verified 200 x 200 x 80 mm rear-open chassis
   below the floor;
 * exports the chassis and the upper platform; there are no separate motor mounts.
 
-There are no battery or ESP holders: the perfboard is the electronics shelf.
-The upper platform is a flat screwed-on cover, not a holder.
-The user mounts those parts.  The MH board, LEDs, header, battery pack, ESP board
-and the JGB37-520 motors/wheels in the renders are reference geometry
-only; they are never exported.
+There are no ESP or sensor holders below: the perfboard is the electronics
+shelf.  The upper platform is a press-on battery tray (3 x 18650 pack on
+top), not just a cover.  The user mounts those parts.  The MH board, LEDs,
+header, battery pack, ESP board and the JGB37-520 motors/wheels in the
+renders are reference geometry only; they are never exported.
 
 Run with smlibpy from the uv cache:
 
@@ -161,8 +162,8 @@ WALL_T = 5.2                  # cut through the 5 mm rear wall with margin
 #
 # There is no lower deck any more: the bay runs clear from the floor
 # (z = 5) up to the perfboard roof (z = 38.4).  The side roof seats and
-# M3 pilots stay for the upper platform; the platform itself is printed
-# and screwed on separately, it is not part of the chassis.
+# their Ø2.5 pilots stay for the upper platform; the platform itself is
+# printed separately and presses onto them with four rods (no screws).
 # ---------------------------------------------------------------------------
 ROOF_SEAT_Y0, ROOF_SEAT_Y1 = -30.0, 33.5
 
@@ -211,10 +212,11 @@ HC_EYE_DY = 13.0
 HC_EYE_Z = 50.0
 
 # Reference envelopes only (3 x 18650 pack, ESP32-S3 dev board) - visual
-# only.  Both now sit on the perfboard; the board is user-supplied.
-BATTERY_X0, BATTERY_X1 = -54.0, 24.0
-BATTERY_Y0, BATTERY_Y1 = -29.5, 30.5
-BATTERY_Z0 = PERF_BOARD_TOP + 0.1
+# only.  The battery now rides on TOP of the printed platform tray; the
+# ESP board stays on the perfboard inside the bay.
+BATTERY_X0, BATTERY_X1 = -39.0, 39.0
+BATTERY_Y0, BATTERY_Y1 = -28.25, 31.75
+BATTERY_Z0 = LEDGE_TOP + 2.0          # platform top / tray floor, z = 67
 BATTERY_T = 21.0
 ESP_X0, ESP_X1 = 44.75, 73.25
 ESP_Y0, ESP_Y1 = -29.5, 32.5
@@ -408,34 +410,64 @@ def perfboard_reference():
 
 
 def platform_top():
-    """The upper platform: a lightweight screwed-on cover.
+    """The upper platform: battery tray held by four press-fit rods.
 
-    It sits on the 8 mm roof ledges (LEDGE_TOP = 65) and is held by four
-    M3 self-tapping screws that pass through the plate's countersunk holes
-    and cut into the M3 pilots already cut into the ledges at (±91, ±20).
-    The middle is hollowed out (asymmetric front/rear rims keep the screw
-    holes on solid material) and a central spine keeps it stiff.
-    No hinges, latches, rims or straps: just a light cover.
+    It sits on the 8 mm roof ledges (LEDGE_TOP = 65).  Instead of screws,
+    four Ø2.35 mm rods drop into the Ø2.5 mm pilots already cut in the
+    ledges at (±91, ±20), so the platform presses on straight down.
+    A 3 x 18650 pack (78 x 60 x 21) rides on top in a shallow tray; the
+    plate under it is solid and the rest of the middle is lightened with
+    two windows.  Wire cuts: a slot under each end of the tray (battery
+    leads) with matching notches in the tray end walls.
     """
     PLATE_X0, PLATE_X1 = -94.75, 94.75
-    PLATE_Y0, PLATE_Y1 = -29.0, ROOF_SEAT_Y1     # -29 .. 33.5
+    PLATE_Y0, PLATE_Y1 = -29.75, ROOF_SEAT_Y1   # seats are -30 .. 33.5
     T = 2.0
     z0 = LEDGE_TOP                               # 65.0
     z1 = z0 + T                                  # 67.0
 
     plate = block(PLATE_X0, PLATE_X1, PLATE_Y0, PLATE_Y1, z0, z1)
-    # Hollow out the middle; rims stay >= 4.9/9.5 mm in y and 11 mm in x so
-    # the Ø 6.1 countersinks at (±91, ±20) always land on material.
-    plate = plate - block(-83.75, 83.75, -24.0, 24.0, z0 - 1.0, z1 + 1.0)
-    # Central stiffening spine across the opening.
-    plate = plate + block(-83.75, 83.75, -2.25, 6.75, z0, z1)
+    # Lightening windows either side of the solid battery pad (x -44..44).
+    plate = plate - block(-83.75, -44.0, -24.0, 24.0, z0 - 1.0, z1 + 1.0)
+    plate = plate - block(44.0, 83.75, -24.0, 24.0, z0 - 1.0, z1 + 1.0)
+
+    # ------------------------------------------------------------------
+    # Battery tray on top (z 67..77): outer 82 x 63.25 mm, walls
+    # 1.2..1.7 mm, cavity 78.6 x 60.6 (0.3 mm per side on the pack) so a
+    # printed tray still takes the holder.
+    # ------------------------------------------------------------------
+    TRAY_H = 10.0
+    CLR = 0.3                                    # per side around the pack
+    pk_x0, pk_x1 = BATTERY_X0, BATTERY_X1        # -39 .. 39   (78 mm)
+    pk_y0, pk_y1 = BATTERY_Y0, BATTERY_Y1        # -28.25 .. 31.75 (60 mm)
+    cx0, cx1 = pk_x0 - CLR, pk_x1 + CLR          # inner cavity 78.6 x 60.6
+    cy0, cy1 = pk_y0 - CLR, pk_y1 + CLR
+    tx0, tx1 = pk_x0 - 2.0, pk_x1 + 2.0          # -41 .. 41
+    ty0, ty1 = PLATE_Y0, PLATE_Y1                # tray edges = plate edges
+    tz0, tz1 = z1, z1 + TRAY_H
+    tray = (
+        block(tx0, tx1, ty0, cy0, tz0, tz1)       # front side wall
+        + block(tx0, tx1, cy1, ty1, tz0, tz1)     # rear side wall
+        + block(tx0, cx0, ty0, ty1, tz0, tz1)     # left end wall
+        + block(cx1, tx1, ty0, ty1, tz0, tz1)     # right end wall
+    )
+    # Wire cuts: notch each end wall at the pack leads (y -4..4) and a
+    # matching slot through the plate just outside the tray.
+    for sgn, x_end, x_out in ((-1.0, cx0, tx0), (1.0, cx1, tx1)):
+        tray = tray - block(x_end - 2.5, x_end + 2.5,
+                            -4.0, 4.0, tz0 - 0.5, tz1 + 0.5)
+        plate = plate - block(min(x_out, sgn * 45.5), max(x_out, sgn * 45.5),
+                              -4.0, 4.0, z0 - 1.0, z1 + 1.0)
+    plate = plate + tray
+
+    # ------------------------------------------------------------------
+    # Press-fit rods: Ø2.35 rod into the Ø2.5 pilot plus a 0.6 mm conical
+    # lead-in.  The plate itself sits on the seat at z = 65; the rod tip
+    # stays 0.2 mm above the pilot floor (z = 61.6).
+    # ------------------------------------------------------------------
     for px, py in SCREWS:
-        # M3 clearance through-hole, Ø 3.2.
-        plate = plate - Cylinder(1.6, T + 2.0).translate(
-            (px, py, z0 + T / 2.0))
-        # 90° countersink for a flat-head M3 (ISO 10642, head max Ø 6.0).
-        plate = plate - Cone(1.6, 3.05, 1.45).translate(
-            (px, py, z1 - 1.45 / 2.0))
+        plate = plate + Cylinder(1.175, 2.6).translate((px, py, z0 - 1.3))
+        plate = plate + Cone(0.0, 1.175, 0.6).translate((px, py, z0 - 2.9))
     return plate
 
 
@@ -669,12 +701,12 @@ def main() -> None:
     print(f"  PETG mass at 1.27 g/cm^3: {result.volume * 1.27 / 1000.0:.1f} g")
 
     # ------------------------------------------------------------------
-    # Upper platform: a separate printed part, 2 mm lightweight plate,
-    # top at z = 67.  Screwed onto the roof ledges with 4 M3 screws;
-    # report it, and keep it for the export checks below.
+    # Upper platform: a separate printed part, 2 mm plate with a 10 mm
+    # battery tray on top (z 67..77) and 4 press-fit rods into the roof
+    # seat pilots; report it, and keep it for the export checks below.
     # ------------------------------------------------------------------
     platform = platform_top()
-    report(platform, "platform (upper plate)")
+    report(platform, "platform (upper plate + battery tray)")
     platform_interference = result.intersect(platform).volume
     print(f"  platform-to-chassis interference: {platform_interference:.6f} mm^3")
     if platform_interference > 1e-6:
@@ -683,10 +715,10 @@ def main() -> None:
     print(f"  platform-to-chassis minimum gap: {platform_clearance:.3f} mm")
 
     # ------------------------------------------------------------------
-    # The upper platform is exported as a separate part.  Seats and M3
-    # pilots stay in the chassis; the platform is screwed onto them.
+    # The upper platform is exported as a separate part.  Seats and pilot
+    # holes stay in the chassis; the platform's rods slot into them.
     # ------------------------------------------------------------------
-    print("\n  upper platform: exported separately (seats and pilots kept in chassis)")
+    print("\n  upper platform: exported separately (4 rods in the seat pilots)")
 
     # ------------------------------------------------------------------
     # Functional checks.
@@ -865,7 +897,8 @@ def main() -> None:
     print("  side sensors: PCBs stand on the board, eyes at z = 50 in the "
           "44 x 20 mm windows")
 
-    # Battery pack and ESP: sit on the perfboard, below the roof line.
+    # Battery pack: carried by the platform tray on top (z = 67..88);
+    # the ESP board stays on the perfboard inside the bay.
     battery = block(BATTERY_X0, BATTERY_X1, BATTERY_Y0, BATTERY_Y1,
                     BATTERY_Z0, BATTERY_Z0 + BATTERY_T)
     esp = block(ESP_X0, ESP_X1, ESP_Y0, ESP_Y1, ESP_Z0, ESP_Z0 + ESP_T)
@@ -873,14 +906,20 @@ def main() -> None:
         inter = result.intersect(part).volume
         if inter > 1e-6:
             raise RuntimeError(f"chassis intersects the {name}: {inter:.6f} mm^3")
-        if part.bbox().max.z >= LEDGE_TOP:
-            raise RuntimeError(f"the {name} reaches the roof seats")
-    print(f"  battery pack: on the perfboard, top z = {BATTERY_Z0 + BATTERY_T:.1f}, "
-          f"{(LEDGE_TOP - BATTERY_Z0 - BATTERY_T):.1f} mm below the roof line")
+        inter = platform.intersect(part).volume
+        if inter > 1e-6:
+            raise RuntimeError(f"platform intersects the {name}: {inter:.6f} mm^3")
+    if esp.bbox().max.z >= LEDGE_TOP:
+        raise RuntimeError("the ESP board reaches the roof seats")
+    if battery.distance_to(platform) > 1e-6:
+        raise RuntimeError("the battery pack does not sit on the tray floor")
+    print(f"  battery pack: in the platform tray, top z = "
+          f"{BATTERY_Z0 + BATTERY_T:.1f} "
+          f"({BATTERY_T:.0f} mm above the platform)")
     print(f"  ESP board   : on the perfboard, top z = {ESP_Z0 + ESP_T:.1f}, "
-          f"{(LEDGE_TOP - ESP_Z0 - ESP_T):.1f} mm below the roof line")
+          f"{(LEDGE_TOP - ESP_Z0 - ESP_T):.1f} mm below the platform")
     battery_esp_gap = battery.distance_to(esp)
-    print(f"  battery-to-ESP gap: {battery_esp_gap:.2f} mm (no centre divider)")
+    print(f"  battery-to-ESP gap: {battery_esp_gap:.2f} mm")
     if battery_esp_gap < 5.0:
         raise RuntimeError("the battery and the ESP are too close together")
 
@@ -1062,9 +1101,9 @@ def main() -> None:
     show(chassis_col, platform_col, perfboard_col,
          sensor_col, sensor_col.mirror(Plane.YZ), esp_col,
          path=str(VIEWER_HTML),
-         title=("Sumo chassis 68 mm: upper platform screwed to the roof seats, "
-                "perfboard frame at the side-window sill "
-                "(sensors and ESP on the board)"),
+         title=("Sumo chassis 68 mm: upper platform with battery tray, "
+                "press-fit rods into the roof seat pilots, "
+                "perfboard frame at the side-window sill"),
          open_browser=False)
     print(f"  wrote {VIEWER_HTML.name}")
 
@@ -1073,7 +1112,9 @@ def main() -> None:
     wheel_drop = WHEEL_RADIUS - (WHEEL_Z - MOTOR_SEAT_DROP)
     print(f"  motor seat drop: {MOTOR_SEAT_DROP:.1f} mm")
     print(f"  overall height with the Ø65 wheels: "
-          f"{BODY_HEIGHT + wheel_drop:.1f} mm")
+          f"{BODY_HEIGHT + wheel_drop:.1f} mm (chassis)")
+    print(f"  overall height with the battery on the tray: "
+          f"{BATTERY_Z0 + BATTERY_T + wheel_drop:.1f} mm")
     print(f"  ride height (wheel bottom below the chassis floor): "
           f"{wheel_drop:.1f} mm (nose lip; 12.0 mm under the thinned floor)")
     print("  footprint: 197.5 x 198.75 mm (walls/rear -1.25, nose restored)")
@@ -1081,9 +1122,10 @@ def main() -> None:
           f"{PERF_BOARD_Y1 - PERF_BOARD_Y0:.1f} mm board, top z = "
           f"{PERF_BOARD_TOP:.1f} mm (side-window sill)")
     print("  board: user-supplied, not exported")
-    print(f"  platform: {(94.75 - (-94.75)):.1f} x {(33.5 - (-29.0)):.1f} mm, "
-          f"2.0 mm thick, hollowed middle + spine, "
-          f"M3 countersunk through-holes at (±91, ±20)")
+    print(f"  platform: {(94.75 - (-94.75)):.1f} x {(33.5 - (-29.75)):.2f} mm, "
+          "2.0 mm thick, 10 mm battery tray on top (0.6 mm pack clearance), "
+          "4 press-fit rods at (±91, ±20), wire cuts")
+    print("  print the platform tray-down (rods up) with supports under the plate")
     print(f"  platform mass at 1.27 g/cm^3: {platform.volume * 1.27 / 1000.0:.1f} g")
     print("  parts to print: chassis + platform")
 
